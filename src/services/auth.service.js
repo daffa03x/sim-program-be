@@ -1,49 +1,41 @@
 const prisma = require('../config/prisma');
 const { hashPassword, comparePassword } = require('../utils/hash');
-const { generateToken } = require('../config/jwt');
+const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../config/jwt');
 
 const registerUser = async ({ name, email, password }) => {
-  // Check if user already exists
-  const existingUser = await prisma.user.findUnique({
-    where: { email }
-  });
-
+  const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
     const error = new Error('Email is already registered');
     error.statusCode = 409;
     throw error;
   }
 
-  // Hash password
   const hashedPassword = await hashPassword(password);
 
-  // Create user
   const user = await prisma.user.create({
-    data: {
-      name,
-      email,
-      password: hashedPassword
-    }
+    data: { name, email, password: hashedPassword }
   });
 
-  // Exclude password from the returned object
-  const { password: _, ...userWithoutPassword } = user;
-  return userWithoutPassword;
+  const accessToken = generateAccessToken({ id: user.id, email: user.email });
+  const refreshToken = generateRefreshToken({ id: user.id, email: user.email });
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { refreshToken }
+  });
+
+  const { password: _, refreshToken: __, ...userWithoutPassword } = user;
+  return { user: userWithoutPassword, accessToken, refreshToken };
 };
 
 const loginUser = async ({ email, password }) => {
-  // Find user by email
-  const user = await prisma.user.findUnique({
-    where: { email }
-  });
-
+  const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
     const error = new Error('Invalid email or password');
     error.statusCode = 401;
     throw error;
   }
 
-  // Check password
   const isMatch = await comparePassword(password, user.password);
   if (!isMatch) {
     const error = new Error('Invalid email or password');
@@ -51,14 +43,40 @@ const loginUser = async ({ email, password }) => {
     throw error;
   }
 
-  // Generate JWT token
-  const token = generateToken({ id: user.id, email: user.email });
+  const accessToken = generateAccessToken({ id: user.id, email: user.email });
+  const refreshToken = generateRefreshToken({ id: user.id, email: user.email });
 
-  const { password: _, ...userWithoutPassword } = user;
-  return { user: userWithoutPassword, token };
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { refreshToken }
+  });
+
+  const { password: _, refreshToken: __, ...userWithoutPassword } = user;
+  return { user: userWithoutPassword, accessToken, refreshToken };
+};
+
+const refreshAccessToken = async (token) => {
+  try {
+    const payload = verifyRefreshToken(token);
+    
+    const user = await prisma.user.findUnique({ where: { id: payload.id } });
+    if (!user || user.refreshToken !== token) {
+      const error = new Error('Invalid refresh token');
+      error.statusCode = 401;
+      throw error;
+    }
+
+    const newAccessToken = generateAccessToken({ id: user.id, email: user.email });
+    return { accessToken: newAccessToken };
+  } catch (err) {
+    const error = new Error('Invalid or expired refresh token');
+    error.statusCode = 401;
+    throw error;
+  }
 };
 
 module.exports = {
   registerUser,
-  loginUser
+  loginUser,
+  refreshAccessToken
 };
