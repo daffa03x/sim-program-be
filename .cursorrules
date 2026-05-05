@@ -1,0 +1,67 @@
+# AI Agent Rules for Sim-Program Backend
+
+This document outlines the rules, architecture, and coding standards that AI coding assistants should follow when contributing to the `sim-program-be` project.
+
+## 1. Project Context & Stack
+- **Framework**: Node.js with Express.js
+- **Module System**: CommonJS (`require` / `module.exports`)
+- **Package Manager**: npm
+- **Base API Path**: `/api/v1`
+
+## 2. Architecture: Layered/MVC Pattern
+The backend strictly follows a layered architecture to maintain separation of concerns. Do not mix business logic, routing, and database operations in a single file.
+
+- **Routes (`src/routes`)**: Defines the API endpoints. Should only receive requests, pass them to the appropriate controller, and handle the response. No business logic here.
+- **Controllers (`src/controllers`)**: Handles the HTTP request/response flow. Extracts data from `req` (body, params, query) and calls the relevant Service. 
+- **Services (`src/services`)**: Contains the core business logic. Should be reusable and decoupled from Express `req`/`res` objects.
+- **Models (`src/models`)**: Database schemas and data access logic (e.g., ORM/ODM definitions).
+- **Middlewares (`src/middlewares`)**: Functions that execute during the request lifecycle (e.g., authentication, validation, global error handling).
+- **Utils (`src/utils`)**: Helper functions, formatters, and reusable cross-cutting tools.
+- **Config (`src/config`)**: Environment variables and third-party service configurations (e.g., database connection).
+
+## 3. Coding Standards & Best Practices
+- **Use CommonJS**: Always use `require` and `module.exports`. Do not use ES Modules (`import`/`export`).
+- **Response Format**: Maintain a consistent API response structure for both success and error responses:
+  ```javascript
+  // Success Response
+  res.status(200).json({
+    success: true,
+    message: 'Action completed successfully',
+    data: { ... } // Optional data payload
+  });
+
+  // Error Response (Usually handled via Next/Global Error Middleware)
+  res.status(400).json({
+    success: false,
+    message: 'Error description'
+  });
+  ```
+- **Error Handling**: 
+  - Do not send error responses directly from Services. Throw an error and let the Controller catch it.
+  - Controllers should wrap their logic in `try/catch` blocks (or use an `asyncHandler` wrapper if implemented) and pass errors to the `next()` function:
+    ```javascript
+    try {
+      const result = await someService.doSomething();
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      next(error); // Triggers the global error middleware
+    }
+    ```
+- **Environment Variables**: Never hardcode sensitive information (secrets, database URIs, API keys). Always use `process.env` and document new variables in a `.env.example` file.
+
+## 4. File Naming Conventions
+- **Controllers**: `[name].controller.js` (e.g., `user.controller.js`)
+- **Services**: `[name].service.js` (e.g., `user.service.js`)
+- **Routes**: `[name].routes.js` (e.g., `user.routes.js`)
+- **Middlewares**: `[name].middleware.js` (e.g., `error.middleware.js`)
+- **Models**: `[name].model.js` (e.g., `user.model.js`)
+
+## 5. Security & Performance
+- Always sanitize and validate incoming request data (body, params, queries) before passing them to the Service layer.
+- Ensure CORS configurations are properly set (handled in `src/app.js`).
+- Use meaningful HTTP status codes (200 OK, 201 Created, 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 500 Internal Server Error).
+
+## 6. General Instructions for AI
+- **No breaking changes**: Do not modify existing configurations (`app.js`, `server.js`) unless explicitly requested by the user.
+- **Context Awareness**: Before generating code, always review the existing files in the corresponding directory to match the specific coding style, variable naming (camelCase), and existing implementations.
+- **Concise Explanations**: When answering the user, focus on the code and concise explanations. Omit unnecessary pleasantries.
