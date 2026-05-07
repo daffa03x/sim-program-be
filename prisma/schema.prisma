@@ -14,14 +14,119 @@ model User {
   password     String
   refreshToken String?  @db.Text
   is_active    Boolean  @default(true)
+  campaigns    Campaign[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
 
 model ProgramCategory {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id          Int             @id @default(autoincrement())
+  name        String          @unique
+  description String?
+  categoryId  Int
+  category    ProgramCategory @relation(fields: [categoryId], references: [id])
+  campaigns   Campaign[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model Platform {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  url       String?
+  campaigns Campaign[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Contributor {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  phone     String?
+  campaigns Campaign[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Beneficiary {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique
+  description String?
+  campaigns   Campaign[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Campaign {
+  id              Int           @id @default(autoincrement())
+  campaignExtId   Int           @unique
+  name            String
+  link            String?
+  period          DateTime
+  productId       Int
+  product         Product       @relation(fields: [productId], references: [id])
+  platformId      Int?
+  platform        Platform?     @relation(fields: [platformId], references: [id])
+  beneficiaryId   Int?
+  beneficiary     Beneficiary?  @relation(fields: [beneficiaryId], references: [id])
+  contributorId   Int?
+  contributor     Contributor?  @relation(fields: [contributorId], references: [id])
+  pmUserId        Int?
+  pmUser          User?         @relation(fields: [pmUserId], references: [id])
+  capaian         Decimal       @default(0) @db.Decimal(15, 2)
+  danaCair        Decimal       @default(0) @db.Decimal(15, 2)
+  pencairan       Decimal       @default(0) @db.Decimal(15, 2)
+  dpProgram       Decimal       @default(0) @db.Decimal(15, 2)
+  dssRecord       DssRecord?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model DssRecord {
+  id            Int                @id @default(autoincrement())
+  campaignId    Int                @unique
+  campaign      Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  dss           Decimal            @default(0) @db.Decimal(15, 2)
+  profilPm      Decimal            @default(0) @db.Decimal(15, 2)
+  profilBaru    Decimal            @default(0) @db.Decimal(15, 2)
+  dssZa         Decimal            @default(0) @db.Decimal(15, 2)
+  noSppp        String?
+  submitLaporan String             @default("Belum")
+  allocation    ProgramAllocation?
+  realization   DssRealization?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model ProgramAllocation {
+  id                      Int       @id @default(autoincrement())
+  dssRecordId             Int       @unique
+  dssRecord               DssRecord @relation(fields: [dssRecordId], references: [id], onDelete: Cascade)
+  operasionalProgramMitra Decimal   @default(0) @db.Decimal(15, 2)
+  programNasional         Decimal   @default(0) @db.Decimal(15, 2)
+  pemberdayaan            Decimal   @default(0) @db.Decimal(15, 2)
+  sosialTrip              Decimal   @default(0) @db.Decimal(15, 2)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+}
+
+model DssRealization {
+  id           Int       @id @default(autoincrement())
+  dssRecordId  Int       @unique
+  dssRecord    DssRecord @relation(fields: [dssRecordId], references: [id], onDelete: Cascade)
+  sdmProgram   Decimal   @default(0) @db.Decimal(15, 2)
+  operasional  Decimal   @default(0) @db.Decimal(15, 2)
+  profil       Decimal   @default(0) @db.Decimal(15, 2)
+  total        Decimal   @default(0) @db.Decimal(15, 2)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
